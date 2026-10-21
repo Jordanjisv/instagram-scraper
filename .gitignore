@@ -1,0 +1,21 @@
+# Entorno virtual
+venv/
+.venv/
+
+# Resultados del scraping
+resultados/
+
+# Archivos temporales
+__pycache__/
+*.pyc
+
+# Credenciales y sesiones
+.env
+.env.*
+cookies*.json
+storage_state*.json
+*.secret
+
+# Editor
+.vscode/
+.idea/
