@@ -1,188 +1,116 @@
-# Instagram Scraper + Big Five con Gemini
+# Instagram Scraper — Análisis exploratorio de Benford
 
-**Arquitectura de Software | Segunda entrega**
+Proyecto académico para recopilar contadores visibles de perfiles de Instagram y analizar la distribución del primer dígito de sus seguidores. El scraper usa Python y Playwright; el análisis genera un resumen estadístico, una gráfica y un archivo Excel.
 
-Este proyecto utiliza Python para recopilar información de un perfil de Instagram mediante *web scraping* y analizar el contenido de **10 publicaciones** con la API de **Google Gemini**. Los resultados se consultan desde un dashboard desarrollado con Streamlit.
+## Alcance
 
-La extracción se realiza a través del navegador, **sin utilizar la API oficial de Instagram**. La lógica se encuentra en un único archivo: `scraping_instagram.py`.
+Se elige una lista del perfil objetivo: `seguidores` o `seguidos`. Para cada cuenta de esa lista, se analiza el **primer dígito del número de seguidores de esa cuenta**.
 
-> **Rama de esta entrega:** `feature/bigfive-metricas`. La primera versión del scraping permanece en [`main`](https://github.com/Jordanjisv/instagram-scraper/tree/main).
+La muestra de Benford se limita a 200 observaciones válidas de una sola lista. Los contadores ausentes se guardan como datos faltantes, no como cero. Los ceros reales se excluyen del análisis del primer dígito.
 
-## Funcionalidades
+El análisis es exploratorio. Una diferencia con la distribución de Benford no permite clasificar cuentas como bots o personas, y no se presupone que los contadores de Instagram deban seguir esa ley.
 
-- Extracción de datos del perfil: nombre, biografía, seguidores, seguidos y publicaciones.
-- Recopilación de enlaces, fechas, descripciones y métricas disponibles de publicaciones.
-- Descarga de imágenes y exportación de datos en JSON y CSV.
-- Identificación de likes con cantidad visible o confirmados sin una cifra exacta.
-- Análisis exploratorio de **10 publicaciones** con Gemini, utilizando texto y/o imágenes.
-- Visualización de publicaciones, imágenes e indicadores Big Five en Streamlit.
-- Reutilización de resultados de IA guardados para evitar consultas repetidas.
+## Funciones
 
-## Tecnologías utilizadas
+- Extracción de publicaciones visibles del perfil.
+- Análisis exploratorio de publicaciones con Big Five mediante Gemini, opcional.
+- Recopilación de contadores visibles de cuentas seguidas o seguidores.
+- Cálculo de frecuencias de primer dígito y prueba chi-cuadrado.
+- Exportación de reportes en JSON, Excel y SVG.
+- Dashboard local con Streamlit.
 
-| Tecnología | Función |
-| --- | --- |
-| Python 3.13 | Lenguaje principal |
-| Playwright y Google Chrome | Navegación y sesión en Instagram |
-| BeautifulSoup | Extracción de información del HTML |
-| Pandas | Organización de datos |
-| Streamlit | Dashboard interactivo |
-| Google Gen AI SDK (`google-genai`) | Comunicación con Gemini |
-| JSON y CSV | Almacenamiento y exportación |
+## Requisitos
 
-## Instalación
-
-Se requiere **Python 3.13** y **Google Chrome** instalado. Los comandos siguientes están pensados para PowerShell en Windows.
-
-**1. Clonar la rama correspondiente a la segunda entrega:**
+- Python 3.13 o compatible.
+- Google Chrome instalado.
+- Una sesión de Instagram iniciada manualmente, si la interfaz la solicita.
+- Paquetes de Python:
 
 ```powershell
-git clone --branch feature/bigfive-metricas https://github.com/Jordanjisv/instagram-scraper.git
-cd instagram-scraper
+pip install playwright beautifulsoup4 pandas streamlit google-genai python-dotenv
 ```
 
-**2. Crear y activar un entorno virtual:**
+`google-genai` y `GEMINI_API_KEY` solo son necesarios para la función Big Five. No guardes la clave en Git.
+
+## Instalación en Windows
 
 ```powershell
 python -m venv venv
 .\venv\Scripts\Activate.ps1
+pip install playwright beautifulsoup4 pandas streamlit google-genai python-dotenv
 ```
 
-**3. Instalar las bibliotecas:**
-
-```powershell
-python -m pip install playwright beautifulsoup4 pandas streamlit google-genai python-dotenv
-```
-
-## Configuración de Gemini
-
-Para realizar el análisis Big Five es necesaria una API Key de Google Gemini, que se puede obtener en [Google AI Studio](https://aistudio.google.com/api-keys).
-
-Crear un archivo llamado **`.env`** en la raíz del proyecto con este contenido:
-
-```dotenv
-GEMINI_API_KEY=PEGA_AQUI_TU_API_KEY
-```
-
-El programa lee ese archivo con `python-dotenv`. La clave **no debe publicarse** y el archivo `.env` está excluido mediante `.gitignore`.
-
-El proyecto utiliza como modelo predeterminado **`gemini-3.8-flash`**, que fue el utilizado durante las pruebas. La disponibilidad y los límites de uso dependen de la cuenta y de la API.
-
-> La clave de Gemini no es necesaria para ejecutar el scraping, las pruebas locales o visualizar análisis ya guardados.
-
-## Cómo ejecutar el proyecto
-
-Con el entorno virtual activado y desde la carpeta del proyecto:
-
-**1. Iniciar sesión en Instagram cuando sea necesario:**
+El inicio de sesión, si hace falta, se realiza manualmente:
 
 ```powershell
 python scraping_instagram.py --accion sesion
 ```
 
-Se abrirá Google Chrome para iniciar sesión manualmente. La sesión se conserva localmente.
+El programa utiliza un perfil local persistente de Chrome. No subas ese perfil, sus cookies ni credenciales al repositorio.
 
-**2. Recopilar publicaciones e imágenes:**
+## Ejecutar Benford
 
-```powershell
-python scraping_instagram.py --accion extraer --usuario sausage_player --actualizar-enlaces --limite 10
-```
-
-`--limite` indica la cantidad de publicaciones pendientes que se procesarán; con `--limite 0` se procesan todas las pendientes.
-
-**3. Actualizar los likes y otras métricas de las publicaciones guardadas:**
+Para analizar 200 cuentas de la lista de seguidos:
 
 ```powershell
-python scraping_instagram.py --accion extraer --usuario sausage_player --reprocesar --solo-guardadas --sin-imagenes --limite 0
+python scraping_instagram.py --accion benford --usuario USUARIO --muestra 200 --objetivo-digitos --lista seguidos --lectura-perfil --max-sin-tarjeta 10
 ```
 
-Este comando vuelve a consultar las publicaciones procesadas sin descargar de nuevo las imágenes.
+Para analizar la lista de seguidores, cambia `--lista seguidos` por `--lista seguidores`.
 
-**4. Previsualizar las diez publicaciones que analizará Gemini, sin consumir cuota:**
+El modo `--lectura-perfil` consulta los contadores visibles en cada perfil individual cuando están disponibles. Instagram puede no mostrar los contadores o no cargar más cuentas; el programa conserva los resultados obtenidos y se detiene ante ciertas condiciones de falta de datos o carga.
+
+Para regenerar los reportes desde los datos guardados, sin abrir Instagram:
 
 ```powershell
-python scraping_instagram.py --accion bigfive --usuario sausage_player --cantidad 10 --previsualizar
+python scraping_instagram.py --accion benford-resumen --usuario USUARIO
 ```
 
-**5. Ejecutar el análisis Big Five:**
-
-```powershell
-python scraping_instagram.py --accion bigfive --usuario sausage_player --cantidad 10
-```
-
-Los resultados se guardan progresivamente. El programa reutiliza resultados previos cuando el contenido y el modelo no han cambiado.
-
-**6. Abrir el dashboard:**
+Para abrir el dashboard:
 
 ```powershell
 python -m streamlit run scraping_instagram.py
 ```
 
-Acceder desde el navegador a **http://localhost:8501**. El dashboard tiene dos pestañas: **Publicaciones e imágenes** y **Big Five exploratorio**.
-
-**7. Ejecutar las pruebas locales:**
+Para ejecutar las pruebas locales incluidas:
 
 ```powershell
 python scraping_instagram.py --accion pruebas
 ```
 
-## Análisis Big Five (OCEAN)
-
-Gemini busca evidencias relacionadas con cinco dimensiones en el **contenido** de cada publicación:
-
-- **Apertura:** creatividad, curiosidad o interés por experiencias nuevas.
-- **Responsabilidad:** organización, planificación o constancia.
-- **Extraversión:** actividades e interacciones sociales mencionadas.
-- **Amabilidad:** apoyo, colaboración o empatía expresados.
-- **Neuroticismo:** referencias expresas a preocupación, inseguridad o tensión.
-
-Para cada dimensión, el sistema registra si encontró evidencia (`presente` o `sin_evidencia`), de dónde proviene (`texto`, `imagen` o `ninguna`) y una justificación. Una publicación puede contener evidencias relacionadas con varias dimensiones o no presentar evidencia suficiente.
-
-**Los resultados no constituyen una prueba psicológica ni una medición de la personalidad real de la dueña del perfil.** Son indicadores exploratorios de expresiones y temas presentes en las publicaciones.
-
-En la ejecución de esta segunda entrega se analizaron **10 publicaciones**, con **50 evaluaciones OCEAN** (cinco dimensiones por publicación). El gráfico indica cuántas publicaciones contienen evidencia por dimensión, no una puntuación psicológica.
-
-### Likes sin cantidad numérica
-
-En ocasiones, Instagram muestra una frase como «A una persona y otras más les gusta esta publicación», pero no proporciona un total.
-
-| Información visible | Resultado almacenado |
-| --- | --- |
-| `24 Me gusta` | Se guarda el número `24` |
-| «A alguien y otras personas les gusta» | Se confirma que hay likes, sin asignar un número |
-| Sin información visible | Se conserva como dato no disponible |
-
-De esta manera, el sistema **no inventa cantidades de likes** cuando Instagram no las proporciona.
+Estas pruebas no garantizan que Instagram mantenga la misma estructura o disponibilidad.
 
 ## Archivos generados
 
-Los resultados se guardan localmente, por ejemplo:
+Los resultados se guardan localmente en:
 
 ```text
-instagram-scraper/
-├── scraping_instagram.py
-├── README.md
-├── .gitignore
-├── .env                         # Solo local, no se sube
-└── resultados/                  # Solo local, no se sube
-    └── sausage_player/
-        ├── perfil.json
-        ├── enlaces_publicaciones.json
-        ├── detalles_publicaciones.json
-        ├── publicaciones_enriquecidas.json
-        ├── publicaciones_enriquecidas.csv
-        ├── big_five_10.json
-        ├── big_five_10.csv
-        └── imagenes/
+resultados/
+└── USUARIO/
+    ├── red_benford.json
+    ├── benford_resumen.json
+    ├── seguidores_seguidos_benford.xlsx
+    ├── benford_lineas_seguidores.svg
+    └── benford_lineas_seguidos.svg
 ```
 
-**Importante:** `resultados/` y las fotografías se excluyen de GitHub. Al clonar el repositorio se obtiene el código, pero para visualizar datos reales se requiere realizar una extracción autorizada o disponer de los archivos generados localmente.
+`red_benford.json` conserva el avance de la recopilación y permite continuar en la misma computadora mientras el archivo permanezca disponible. El Excel se genera a partir de esos registros; no es el archivo de reanudación.
 
-## Consideraciones
+Los archivos de resultados pueden contener nombres de cuentas y contadores individuales. No se incluyen en este repositorio. Para una demostración pública, utiliza datos sintéticos o comparte solo resultados agregados sin nombres de usuario.
 
-- El scraping se limita a contenido cuyo acceso y tratamiento estén autorizados y no evita restricciones de Instagram.
-- Los datos dependen de la información disponible durante la consulta; algunas publicaciones carecen de descripciones o recuentos públicos.
-- No se deben publicar claves API, cookies, sesiones ni imágenes personales sin autorización.
-- El uso de Gemini está sujeto a disponibilidad, cuotas y condiciones del servicio; al analizar imágenes o textos, esos datos se envían a la API.
+## Uso responsable y limitaciones
 
-**Proyecto académico — Arquitectura de Software.**
+- Recopila únicamente información visible cuyo acceso y tratamiento estén autorizados.
+- El proyecto no utiliza APIs privadas ni intenta eludir autenticación, CAPTCHA, controles o restricciones.
+- Si Instagram limita o impide el acceso, detén la recopilación.
+- Los contadores abreviados, como `2.5K`, son aproximaciones y pueden afectar el primer dígito.
+- La muestra disponible puede tener sesgo de selección.
+- La prueba chi-cuadrado y el valor p describen el ajuste estadístico de la muestra; no identifican bots ni determinan la autenticidad de una cuenta.
+
+## No subir al repositorio
+
+- `venv/`
+- `.env` y claves de API
+- El perfil persistente de Chrome
+- `resultados/`, incluidos el Excel y `red_benford.json`
+- Capturas que muestren nombres de cuentas o información personal
